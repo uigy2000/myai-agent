@@ -1,28 +1,31 @@
 import os
+import time
 import telebot
-import google.generativeai as genai
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_KEY = os.getenv("GROQ_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
-
+client = Groq(api_key=GROQ_KEY)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+def ask_groq(prompt):
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
+
 def agent_planner(goal):
-    prompt = f"전략 기획 전문가로서 이 목표의 실행 계획을 3단계로 작성하세요. 목표: {goal} 한국어로 답하세요."
-    return model.generate_content(prompt).text
+    return ask_groq(f"전략 기획 전문가로서 이 목표의 실행 계획을 3단계로 작성하세요. 목표: {goal} 한국어로 답하세요.")
 
 def agent_executor(plan):
-    prompt = f"실행 전문가로서 이 계획의 실제 결과물을 작성하세요. 계획: {plan} 한국어로 답하세요."
-    return model.generate_content(prompt).text
+    return ask_groq(f"실행 전문가로서 이 계획의 실제 결과물을 작성하세요. 계획: {plan} 한국어로 답하세요.")
 
 def agent_reviewer(result):
-    prompt = f"품질 검토 전문가로서 이 결과물을 평가하고 개선점 2~3가지와 10점 만점 점수를 주세요. 결과물: {result} 한국어로 답하세요."
-    return model.generate_content(prompt).text
+    return ask_groq(f"품질 검토 전문가로서 이 결과물을 평가하고 개선점 2~3가지와 10점 만점 점수를 주세요. 결과물: {result} 한국어로 답하세요.")
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -55,13 +58,11 @@ def run_agents(message):
         f"✅ 검토\n{review[:800]}"
     )
 
-import time
-
 print("봇 실행 중...")
 while True:
     try:
         bot.polling(none_stop=True, timeout=60)
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"에러: {e}")
         print("5초 후 재연결...")
         time.sleep(5)
