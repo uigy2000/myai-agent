@@ -55,5 +55,13 @@ def run_agents(message):
         f"✅ 검토\n{review[:800]}"
     )
 
+import time
+
 print("봇 실행 중...")
-bot.polling()
+while True:
+    try:
+        bot.polling(none_stop=True, timeout=60)
+    except Exception as e:
+        print(f"에러 발생: {e}")
+        print("5초 후 재연결...")
+        time.sleep(5)
